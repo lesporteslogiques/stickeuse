@@ -1,0 +1,20 @@
+# Logs — locaux à chaque poste, jamais versionnés
+ql570-OP*.log
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Environnement virtuel
+.venv/
+venv/
+
+# OS / éditeurs
+.DS_Store
+*~
+.idea/
+.vscode/
