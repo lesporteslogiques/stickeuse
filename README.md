@@ -46,7 +46,7 @@ Un `uninstall.sh` défera proprement l'installation (sans toucher au groupe `lp`
 
 ## Licences
 
-- **Code** : GNU General Public License v3 (GPLv3) — voir `LICENSE`.
+- **Code** : GNU Affero General Public License v3 (AGPL-3.0) — voir `LICENSE`.
 - **Documentation** (ce dépôt + wiki) : Creative Commons Attribution (CC BY).
 
 ## Auteurice
