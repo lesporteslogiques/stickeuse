@@ -1,8 +1,9 @@
 """coeur.py — le moteur de Stickeuse QL-570 (sans interface).
 
 Il sait parler à l'imprimante Brother QL-570 : la trouver, vérifier qu'on peut
-lui écrire, et (plus tard) imprimer. Testable directement en ligne de commande.
-Construit en trois étapes : C1 détection · C2 accès · C3 impression (à venir).
+lui écrire, et (bientôt) imprimer. Testable directement en ligne de commande.
+Construit en trois étapes : C1 détection · C2 accès · C3 validation + impression
+(l'envoi à l'imprimante reste à écrire).
 
 Les termes techniques (motif, nœud, backend, dataclass…) sont définis simplement
 dans docs/lexique.md.
@@ -12,6 +13,9 @@ import glob                            # liste les fichiers correspondant à un 
 import os                              # outils du système ; ici os.access, pour tester un droit
 import pyudev                          # lecture d'udev : la base qui décrit les périphériques
 from dataclasses import dataclass      # fabrique des objets de données (constructeur automatique)
+from PIL import Image                  # Pillow : ouvrir et inspecter des images (déjà installé via brother_ql)
+import shutil                          # shutil.which : retrouver un exécutable dans le PATH
+import subprocess                      # lancer une commande externe (brother_ql) en sous-processus
 
 
 class ErreurStickeuse(Exception):
@@ -150,9 +154,122 @@ def determiner_cible():
     )
 
 
-if __name__ == "__main__":          # ne s'exécute QUE si on lance coeur.py directement ;
-                                    # à l'import (depuis programme_a / programme_b), ce bloc est ignoré.
+# ─────────────────────────────────────────────────────────────────────────────
+# C3 — Impression + validation d'un PNG existant
+# ─────────────────────────────────────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class Etiquette:
+    """Décrit le rouleau d'étiquettes chargé. C'est l'UNIQUE constante de
+    configuration de l'appli : pour gérer un autre rouleau, on ne touche qu'ici.
+    « frozen=True » la rend immuable — une vraie constante, qu'on ne risque pas
+    de modifier par accident en cours de route."""
+    identifiant: str   # identifiant brother_ql, ex. "39x90" (≠ des mm réels : piège de nommage)
+    largeur: int       # largeur imprimable en pixels (portrait)
+    hauteur: int       # hauteur imprimable en pixels (portrait)
+
+
+# Le rouleau de cet exemplaire : DK-11208 (38×90 mm, prédécoupé).
+ETIQUETTE = Etiquette(identifiant="39x90", largeur=413, hauteur=991)
+
+# Au-delà de cette proportion de pixels gris (ni noirs ni blancs), on AVERTIT
+# que l'image est sans doute floue ou tramée. Repère mesuré : du texte net
+# tourne autour de 2 % ; une photo, bien plus. Seuil indicatif, à ajuster.
+SEUIL_GRIS = 0.10
+
+
+def valider_png(chemin, etiquette):
+    """Vérifie qu'un fichier est imprimable sur l'étiquette donnée.
+
+    Lève ErreurStickeuse si c'est BLOQUANT (pas un PNG → E-C3-1 ; mauvaises
+    dimensions → E-C3-2). Renvoie un avertissement NON bloquant (E-C3-3, trop
+    de gris) — ou None si tout est nickel."""
+
+    # --- 7a : est-ce un PNG réellement lisible ? ---
+    # On se fie au CONTENU, pas à l'extension : un « .png » peut cacher autre
+    # chose, ou être corrompu. open() + load() force le décodage, donc un
+    # fichier absent ou abîmé déclenche une OSError ici, qu'on rattrape.
     try:
-        print(determiner_cible())
+        image = Image.open(chemin)
+        image.load()
+    except OSError:
+        raise ErreurStickeuse("E-C3-1", f"Fichier introuvable ou illisible : {chemin}")
+    if image.format != "PNG":
+        raise ErreurStickeuse("E-C3-1", f"Le fichier n'est pas un PNG (format lu : {image.format}).")
+
+    # --- 7b : dimensions EXACTEMENT attendues ? (le seul refus dur de format) ---
+    # Portrait pile, OU sa transposée (paysage) que brother_ql pivotera.
+    attendu = (etiquette.largeur, etiquette.hauteur)
+    transpose = (etiquette.hauteur, etiquette.largeur)
+    if image.size not in (attendu, transpose):
+        raise ErreurStickeuse(
+            "E-C3-2",
+            f"Dimensions {image.size} px ; attendu {attendu} ou {transpose}.",
+        )
+
+    # --- 7c : l'image est-elle bien nette ? (vérification SOUPLE) ---
+    gris = image.convert("L")              # ramène l'image en niveaux de gris
+    hist = gris.histogram()                # 256 cases : nb de pixels par niveau (0 = noir, 255 = blanc)
+    total = gris.width * gris.height
+    proportion_gris = sum(hist[20:235]) / total   # pixels ni quasi-noirs ni quasi-blancs
+    if proportion_gris > SEUIL_GRIS:
+        # On RENVOIE l'erreur sans la LEVER : c'est un avertissement, pas un
+        # blocage. L'appelant l'affichera et imprimera quand même.
+        return ErreurStickeuse("E-C3-3", f"Image peut-être floue : {proportion_gris:.0%} de pixels gris.")
+
+    return None   # tout est bon, aucun avertissement
+
+def imprimer(cible, etiquette, chemin):
+    """C3-B : envoie un PNG DÉJÀ VALIDÉ à l'imprimante, via la commande brother_ql.
+
+    Reconstruit l'équivalent de la commande de référence, mais avec les valeurs
+    DÉTECTÉES (rien en dur), puis la lance. Lève ErreurStickeuse si l'envoi
+    échoue ; ne renvoie rien s'il réussit."""
+
+    # Où est l'exécutable brother_ql ? (comme le ferait le shell en fouillant le
+    # PATH). Absent → problème d'installation, impression impossible.
+    programme = shutil.which("brother_ql")
+    if programme is None:
+        raise ErreurStickeuse(
+            "E-C3-6",
+            "Commande « brother_ql » introuvable. Vérifier son installation "
+            "et que son dossier (p. ex. ~/.local/bin) est dans le PATH.",
+        )
+
+    # La commande en LISTE (pas une chaîne) : subprocess gère lui-même les
+    # espaces et caractères spéciaux, sans passer par le shell. Plus sûr.
+    commande = [
+        programme,
+        "-b", cible.backend,          # backend détecté
+        "-m", cible.modele,           # modèle détecté
+        "-p", cible.adresse,          # adresse détectée
+        "print",
+        "-l", etiquette.identifiant,  # identifiant d'étiquette (constante de config)
+        chemin,                       # le PNG validé
+    ]
+
+    resultat = subprocess.run(commande, capture_output=True, text=True)
+    if resultat.returncode != 0:
+        sortie = (resultat.stderr + resultat.stdout).strip()
+        if "permission" in sortie.lower() or "denied" in sortie.lower():
+            raise ErreurStickeuse("E-C3-5", "Accès refusé à l'impression (groupe « lp » / règle udev). " + sortie)
+        raise ErreurStickeuse("E-C3-4", "L'impression a échoué : " + sortie)
+    # returncode == 0 → succès, rien à renvoyer.
+
+
+if __name__ == "__main__":
+    import sys
+    try:
+        cible = determiner_cible()                       # C1 + C2
+        if len(sys.argv) < 2:
+            print("Imprimante prête :", cible)
+            print("Pour imprimer : python3 coeur.py <chemin_du_png>")
+        else:
+            chemin = sys.argv[1]
+            avertissement = valider_png(chemin, ETIQUETTE)   # C3-A
+            if avertissement is not None:
+                print(f"[avertissement {avertissement.code}] {avertissement}")
+            imprimer(cible, ETIQUETTE, chemin)               # C3-B
+            print("Étiquette imprimée.")                     # C3-C
     except ErreurStickeuse as e:
         print(f"[{e.code}] {e}")
