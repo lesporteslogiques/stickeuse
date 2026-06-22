@@ -1,9 +1,8 @@
 """coeur.py — le moteur de Stickeuse QL-570 (sans interface).
 
 Il sait parler à l'imprimante Brother QL-570 : la trouver, vérifier qu'on peut
-lui écrire, et (bientôt) imprimer. Testable directement en ligne de commande.
-Construit en trois étapes : C1 détection · C2 accès · C3 validation + impression
-(l'envoi à l'imprimante reste à écrire).
+lui écrire, et imprimer une étiquette. Testable directement en ligne de commande.
+Construit en trois étapes : C1 détection · C2 accès · C3 validation + impression.
 
 Les termes techniques (motif, nœud, backend, dataclass…) sont définis simplement
 dans docs/lexique.md.
@@ -11,11 +10,11 @@ dans docs/lexique.md.
 
 import glob                            # liste les fichiers correspondant à un motif (jokers façon shell)
 import os                              # outils du système ; ici os.access, pour tester un droit
+import shutil                          # shutil.which : retrouver un exécutable dans le PATH
+import subprocess                      # lancer une commande externe (brother_ql) en sous-processus
 import pyudev                          # lecture d'udev : la base qui décrit les périphériques
 from dataclasses import dataclass      # fabrique des objets de données (constructeur automatique)
 from PIL import Image                  # Pillow : ouvrir et inspecter des images (déjà installé via brother_ql)
-import shutil                          # shutil.which : retrouver un exécutable dans le PATH
-import subprocess                      # lancer une commande externe (brother_ql) en sous-processus
 
 
 class ErreurStickeuse(Exception):
@@ -219,6 +218,7 @@ def valider_png(chemin, etiquette):
 
     return None   # tout est bon, aucun avertissement
 
+
 def imprimer(cible, etiquette, chemin):
     """C3-B : envoie un PNG DÉJÀ VALIDÉ à l'imprimante, via la commande brother_ql.
 
@@ -257,19 +257,29 @@ def imprimer(cible, etiquette, chemin):
     # returncode == 0 → succès, rien à renvoyer.
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":          # ne s'exécute QUE si on lance coeur.py directement ;
+                                    # à l'import (depuis programme_a / programme_b), ce bloc est ignoré.
     import sys
+    from journal import obtenir_journal     # le journal ne sert qu'au lancement, pas à l'import
+
+    journal = obtenir_journal()             # configure le journal du poste (une seule fois)
+    journal.info(f"Lancement coeur.py : {sys.argv}")
     try:
         cible = determiner_cible()                       # C1 + C2
+        journal.info(f"Cible détectée : {cible}")        # on note ce que la détection a trouvé
         if len(sys.argv) < 2:
             print("Imprimante prête :", cible)
-            print("Pour imprimer : python3 coeur.py <chemin_du_png>")
+            print("Pour imprimer, donne le chemin d'un PNG, par exemple :")
+            print("    python3 coeur.py test/bekhauf.png")
         else:
             chemin = sys.argv[1]
             avertissement = valider_png(chemin, ETIQUETTE)   # C3-A
             if avertissement is not None:
                 print(f"[avertissement {avertissement.code}] {avertissement}")
+                journal.warning(f"{avertissement.code} {avertissement}")
             imprimer(cible, ETIQUETTE, chemin)               # C3-B
             print("Étiquette imprimée.")                     # C3-C
+            journal.info(f"Étiquette imprimée : {chemin} (modèle {cible.modele})")
     except ErreurStickeuse as e:
         print(f"[{e.code}] {e}")
+        journal.error(f"{e.code} {e}")          # l'incident est consigné, code de catalogue compris
