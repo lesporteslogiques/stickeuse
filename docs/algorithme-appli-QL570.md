@@ -74,7 +74,7 @@ Entrée : trio **(backend, adresse, modèle)** · étiquette (constante de confi
 
 **B. Envoyer**
 
-4. Construire la commande `brother_ql` avec les valeurs **détectées** (backend, adresse, modèle) + l'identifiant d'étiquette + le PNG — l'équivalent de la commande validée, mais rien en dur.
+4. Construire la commande `brother_ql` avec les valeurs **détectées** (backend, adresse, modèle) + l'identifiant d'étiquette + le PNG — l'équivalent de la commande validée, mais rien en dur. La commande `brother_ql` doit être présente sur le PATH, sinon → **E-C3-6**.
 5. À l'envoi : accès refusé → **E-C3-5** (filet de C2) ; état matériel (capot, fin de rouleau…) → **E-C3-4** *(si l'imprimante le remonte — à vérifier matériel)*.
 
 *Le nombre d'exemplaires est géré par l'appelant (Programme A) : C3 imprime **une** étiquette par appel ; pour N exemplaires, l'appli répète l'envoi N fois.*
@@ -98,6 +98,7 @@ Chaque erreur porte **quatre infos** : *famille · où elle est détectée · ni
 3. **État matériel** — capot ouvert, fin de rouleau, mauvais rouleau.
 4. **Image/format** — pas un PNG, mauvaises dimensions, image floue (gris).
 5. **Cycle de vie** — appli déjà lancée, agent en double.
+6. **Installation/dépendances** — `brother_ql` introuvable, dépendance Python manquante, absente du PATH.
 
 **Niveaux d'escalade** (viser toujours le plus bas, et concevoir pour *faire descendre* les erreurs d'un cran) :
 
@@ -117,18 +118,20 @@ Chaque erreur porte **quatre infos** : *famille · où elle est détectée · ni
 - **E-C3-3 — Trop de gris (flou probable).** Image/format · C3-A3 · N1 (refaire au Crayon, voir guide) · *avertissement* · log : *proportion de gris*.
 - **E-C3-4 — Capot / état matériel.** État matériel · C3-B5 · N1 (refermer/recharger puis réimprimer) · log : *statut imprimante* — *comportement exact à vérifier matériel*.
 - **E-C3-5 — Accès refusé à l'envoi.** Accès · C3-B5 · N2 · réutilise E-C2-2/E-C2-3 (le filet).
+- **E-C3-6 — `brother_ql` introuvable.** Installation/dépendances · C3-B4 · N2 (vérifier que `brother_ql` est installé et que son dossier — `~/.local/bin`, ou le venv `/opt/ql570/` — est sur le PATH) · log : *« commande brother_ql absente du PATH »*.
 
 *Non encore codifiée :* « appli déjà lancée » (Cycle de vie, à traiter en A/B).
 
 ### Journalisation
 
-- **Un fichier de log par poste** : `ql570-<hostname>.log` (chez nous `ql570-OP{NN}.log`), à un endroit fixe et documenté (p. ex. `~/.ql570/`), ouvrable avec n'importe quel éditeur.
+- **Un fichier de log par poste** : `ql570-<hostname>.log` (chez nous `ql570-OP{NN}.log`), à un endroit fixe et documenté (`~/.ql570/`), ouvrable avec n'importe quel éditeur.
 - **Horodaté**, une ligne par événement. Le nom de la machine est **dans le nom du fichier ET sur chaque ligne** (une ligne extraite reste auto-suffisante).
 - Champs d'une ligne : *horodatage · machine · famille · où détecté · niveau · message système brut*. Le log = le catalogue daté et complété du détail système.
 - **Journal cumulatif**, pas un fichier par erreur (sinon on perd la séquence d'événements qui dépanne).
 - L'**agent B n'a pas de fenêtre** : le log est son **seul moyen de signaler** ce qui se passe.
 - Le message à l'écran (N1/N2) peut **pointer vers le log** pour le dépannage.
-- En Python, le module standard `logging` fournira horodatage, niveaux et rotation.
+- En Python, le module standard `logging` fournit horodatage, niveaux et rotation.
+- *État actuel* (`src/journal.py`) : *logger* nommé `ql570`, partagé par le cœur et les deux programmes, configuré une fois au lancement, écrivant **en ajout** dans `~/.ql570/ql570-<hostname>.log` au format `horodatage [niveau] message`. Les champs structurés (machine · famille · où) sur chaque ligne et la rotation restent à enrichir (voir Chantiers).
 
 ---
 
@@ -182,14 +185,20 @@ Petit programme tournant en fond dans la session, **consommateur du cœur (C1)**
 
 *Liste vivante des angles morts, par ordre d'importance. À refermer au fil des phases.*
 
-- **Installation / déploiement** *(chantier à part entière)* : `install.sh` (en root) — dépendances (`python3-tk` via apt ; `brother_ql`, `pyudev` via pip dans un venv sous `/opt/ql570/`), pose de la **règle udev** (`/etc/udev/rules.d/`), ajout au groupe **`lp`**, **autostart** de B (`/etc/xdg/autostart/`). Plus un `uninstall.sh` symétrique (sans retirer du groupe `lp`, partagé ; demander pour les logs), et une **auto-vérification des dépendances au démarrage**.
-- **Version-control / GitHub** *(fondation)* : dépôt chez `lesporteslogiques`, un seul, public. README (= instructions d'install + canal de distribution), `.gitignore` (logs, `__pycache__`, venv), LICENSE GPL-3.0 (code) ; docs en CC BY. Source de vérité = le dépôt ; le wiki raconte et renvoie.
+- **Programme A — interface d'impression** *(prochaine étape de code)* : fenêtre Tkinter, deux écrans spécifiés en §4, au-dessus du cœur ; rouvre le journal au démarrage et y consigne ses événements.
+- **Programme B — agent de détection** *(à détailler puis coder)* : voir §5 ; réutilise C1 + le journal.
+- **Installation / déploiement** *(chantier à part entière)* : `install.sh` (en root) — dépendances (`python3-tk` via apt ; `brother_ql`, `pyudev` via pip dans un venv sous `/opt/ql570/`), pose de la **règle udev** (`/etc/udev/rules.d/`), ajout au groupe **`lp`**, **autostart** de B (`/etc/xdg/autostart/`). Plus un `uninstall.sh` symétrique (sans retirer du groupe `lp`, partagé ; demander pour les logs), et une **auto-vérification des dépendances au démarrage**. *(Le déploiement manuel sur OP52 a déjà dressé une partie du cahier des charges : dépendances, groupe `lp`, et le constat que ces gestes N2 exigent root.)*
+- **Documentation wiki (Les Portes Logiques)** *(à boucler)* : page « Utiliser l'application Stickeuse-QL570 » — **raconter l'usage et renvoyer au dépôt** (source de vérité technique), sans dupliquer les instructions d'install. À aligner : le spec d'image affiché côté wiki doit indiquer le `413×991` de l'appli ; ajouter le lien vers `github.com/lesporteslogiques/stickeuse`.
 - **Cohabitation A/B** *(ouvert)* : que fait concrètement la pop-up de B (notifier seulement, ou proposer d'ouvrir A) ? Éviter une pop-up redondante si A est déjà ouverte.
 - **Débranchement à chaud** *(ouvert)* : pendant que A est ouverte (détectée au lancement, partie avant l'impression).
-- **Mineurs** : plusieurs imprimantes Brother branchées (C1 prend la première — simplification assumée) ; examiner `template_paysage.png` (vestige de l'ancienne « Stickeuse ») ; maquettes dédiées des dialogues succès/erreur si besoin.
+- **Mineurs** : plusieurs imprimantes Brother branchées (C1 prend la première — simplification assumée) ; examiner `template_paysage.png` (vestige de l'ancienne « Stickeuse ») ; maquettes dédiées des dialogues succès/erreur si besoin ; enrichir les lignes de journal avec les champs structurés (*famille · où · niveau*) du spec, et envisager une rotation des logs.
 
-**Refermés depuis le squelette de départ**
+**Refermés**
 
+- **Module cœur (C1 + C2 + C3)** → codé, commenté, testé sur matériel (impression réelle sur OP42 ; détection portable sur OP52). `src/coeur.py`.
+- **Journalisation** → codée (`src/journal.py`), un log par poste dans `~/.ql570/`.
+- **Catalogue d'erreurs** → structure d'accueil + entrées E-C2-* / E-C3-* (dont `E-C3-6`, découverte en codant).
+- **Version-control / GitHub** → dépôt public `lesporteslogiques/stickeuse` en place : README, `.gitignore` (logs, `__pycache__`, venv), LICENSE, docs ; cœur + journal poussés. Source de vérité = le dépôt ; le wiki raconte et renvoie.
 - *Nombre d'exemplaires* → spécifié (Programme A).
 - *Cliquer « Imprimer » sans fichier* → bouton désactivé tant qu'aucun fichier valide.
 - *Étiquette ≠ rouleau chargé* → réglé : exemplaire mono-format (matériel) + garde-fou humain à l'accueil.
@@ -200,9 +209,12 @@ Petit programme tournant en fond dans la session, **consommateur du cœur (C1)**
 
 ## Statut
 
-- **Figés** : C1, C2, C3 — le **module cœur est complet**.
-- **Programme A** : interface **spécifiée** (2 écrans), à coder.
+- **Module cœur (C1 + C2 + C3)** : **codé et validé sur matériel**. `src/coeur.py`. Impression réelle confirmée sur OP42 ; détection portable confirmée sur OP52 (bloquée seulement par l'accès root, par design).
+- **Journalisation** : **codée**. `src/journal.py` — un log par poste dans `~/.ql570/ql570-<hostname>.log`.
+- **Catalogue d'erreurs** : structure + entrées E-C2-* / E-C3-* (dont `E-C3-6`).
+- **Dépôt** : `github.com/lesporteslogiques/stickeuse` (public) — cœur, journal et docs poussés.
+- **Programme A** : interface **spécifiée** (2 écrans), **à coder**.
 - **Programme B** : squelette, à détailler.
-- **Chantiers** Installation/déploiement et Version-control/GitHub : ouverts.
+- **Chantiers ouverts** : `install.sh` / `uninstall.sh`, documentation du wiki.
 - **Projet** : Stickeuse QL-570 — Vitally LUBIN / Les Portes Logiques — code **GPL-3.0**, docs **CC BY**.
-- **Prochaine étape** : coder le cœur (C1), testable en ligne de commande.
+- **Prochaine étape** : coder le **Programme A** (fenêtre d'impression), au-dessus du cœur.
