@@ -51,7 +51,7 @@ Un `uninstall.sh` défera proprement l'installation (sans toucher au groupe `lp`
 
 ## Auteurice
 
-Conçue et développée par **[ton nom]**.
+Conçue et développée par **Vitally LUBIN** en 2026.
 
 ## Liens
 
