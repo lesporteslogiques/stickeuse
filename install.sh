@@ -123,6 +123,21 @@ for f in $FICHIERS_PY; do
     install -m 0644 "$SRC_DIR/$f" "$APP_DIR/$f"   # « install » : copie + pose les droits
 done
 
+# Icône de l'appli (facultative). Si le PNG est fourni à côté des sources, on
+# l'installe dans /opt/ql570/ et les .desktop pointeront dessus (chemin absolu).
+# Sinon, dégradation douce : on retombe sur l'icône générique « printer » du
+# thème. ICON_REF porte la référence à mettre dans les .desktop, ci-dessous.
+ICONE_SRC="$SRC_DIR/stickeuseql570.png"
+ICONE_DST="$APP_DIR/stickeuseql570.png"
+if [ -f "$ICONE_SRC" ]; then
+    install -m 0644 "$ICONE_SRC" "$ICONE_DST"
+    ICON_REF="$ICONE_DST"
+    info "Icône installée : $ICONE_DST"
+else
+    ICON_REF="printer"
+    avert "Icône stickeuseql570.png absente des sources : repli sur l'icône générique « printer »."
+fi
+
 # ── d. Droit d'accès à l'imprimante : groupe « lp » ──────────────────────────
 # Ajouter l'utilisateur au groupe « lp » lui donne le droit d'écrire sur le nœud
 # /dev/usb/lpX (voie principale). -a = AJOUTER sans retirer des autres groupes ;
@@ -156,7 +171,7 @@ Type=Application
 Name=Agent Stickeuse QL-570
 Comment=Signale le branchement de l'imprimante QL-570
 Exec=$PY $APP_DIR/programme_b.py
-Icon=printer
+Icon=$ICON_REF
 Terminal=false
 NoDisplay=true
 X-GNOME-Autostart-enabled=true
@@ -183,7 +198,7 @@ Type=Application
 Name=Stickeuse QL-570
 Comment=Imprimer une étiquette sur la Brother QL-570
 Exec=$PY $APP_DIR/programme_a.py
-Icon=printer
+Icon=$ICON_REF
 Terminal=false
 EOF
 # L'icône doit APPARTENIR à l'utilisateur et être exécutable.

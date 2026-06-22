@@ -16,12 +16,19 @@ docs/lexique.md.
 import shutil                        # shutil.which : retrouver notify-send sur le PATH
 import subprocess                    # lancer notify-send (la notification de bureau)
 import pyudev                        # écoute des événements de périphériques (comme C1, côté flux)
+from pathlib import Path             # chemins comme objets ; sert à localiser l'icône
 
 from journal import obtenir_journal  # le journal partagé du poste
 
 # Mêmes codes qu'en C1 : c'est ainsi qu'on reconnaît LA QL-570 et pas un autre USB.
 ID_VENDOR_BROTHER = "04f9"
 ID_PRODUCT_QL570 = "2028"
+
+# Icône de la notification. On la cherche À CÔTÉ de ce fichier (rien en dur) :
+# après installation, programme_b.py et l'icône vivent ensemble dans /opt/ql570/.
+# __file__ = le chemin de CE fichier ; .resolve() le rend absolu ; .parent = son
+# dossier. Si l'icône est absente, on s'en passe (notification sans image).
+ICONE = Path(__file__).resolve().parent / "stickeuseql570.png"
 
 
 def notifier(titre, message, journal):
@@ -33,7 +40,13 @@ def notifier(titre, message, journal):
     if programme is None:
         journal.warning("notify-send introuvable : notification non affichée.")
         return
-    subprocess.run([programme, titre, message])
+    # -i ajoute une icône à la notification. On ne la passe QUE si le fichier
+    # existe, sinon notify-send afficherait une icône cassée : dégradation douce.
+    commande = [programme]
+    if ICONE.exists():
+        commande += ["-i", str(ICONE)]
+    commande += [titre, message]
+    subprocess.run(commande)
 
 
 def surveiller():
