@@ -10,21 +10,21 @@ Application pour piloter l'imprimante d'étiquettes **Brother QL-570** depuis un
 - Imprime une étiquette à partir d'une **image PNG** préparée par l'utilisateur dans GIMP.
 - Signale, au branchement, qu'une QL-570 est disponible (agent en fond, notification de bureau).
 
-L'image elle-même se fabrique dans **GIMP** (voir <:docs/prise-en-main-gimp.md>) : l'appli ne crée pas l'image, elle l'imprime.
+L'image elle-même se fabrique dans **GIMP** (voir [`docs/prise-en-main-gimp.md`](docs/prise-en-main-gimp.md)) : l'appli ne crée pas l'image, elle l'imprime.
 
 ## Architecture (résumé)
 
-Trois piliers, détaillés dans `docs/algorithme-appli-QL570.md` :
+Trois piliers, détaillés dans [`docs/algorithme-appli-QL570.md`](docs/algorithme-appli-QL570.md) :
 
-- **Module cœur** (`src/coeur.py`) — le moteur (détection, accès, impression), testable en ligne de commande.
-- **Transversaux** — catalogue d'erreurs et journalisation (`src/journal.py`, un log par poste).
-- **Deux programmes** — l'application d'impression (`src/programme_a.py`, fenêtre) et l'agent de détection (`src/programme_b.py`, pop-up), qui partagent le cœur sans communiquer entre eux.
+- **Module cœur** ([`src/coeur.py`](src/coeur.py)) — le moteur (détection, accès, impression), testable en ligne de commande.
+- **Transversaux** — catalogue d'erreurs et journalisation ([`src/journal.py`](src/journal.py), un log par poste).
+- **Deux programmes** — l'application d'impression ([`src/programme_a.py`](src/programme_a.py), fenêtre) et l'agent de détection ([`src/programme_b.py`](src/programme_b.py), pop-up), qui partagent le cœur sans communiquer entre eux.
 
 ## Documentation
 
-- `docs/notes-techniques-QL570.md` — le contexte matériel vérifié.
-- `docs/algorithme-appli-QL570.md` — l'organisation et les algorithmes.
-- `docs/prise-en-main-gimp.md` — comment fabriquer l'image de l'étiquette.
+- [`docs/notes-techniques-QL570.md`](docs/notes-techniques-QL570.md) — le contexte matériel vérifié.
+- [`docs/algorithme-appli-QL570.md`](docs/algorithme-appli-QL570.md) — l'organisation et les algorithmes.
+- [`docs/prise-en-main-gimp.md`](docs/prise-en-main-gimp.md) — comment fabriquer l'image de l'étiquette.
 - **Guide d'usage** (côté utilisateur), sur le wiki : <https://lesporteslogiques.net/wiki/materiel/logicos/guideql570>.
 - Le **récit de construction** est tenu sur le wiki des Portes Logiques (le dépôt reste la source de vérité technique).
 
@@ -56,7 +56,7 @@ cd /chemin/vers/stickeuse
 - ajoute le compte au groupe `lp` ;
 - pose la règle udev (`/etc/udev/rules.d/`) ;
 - met l'agent en autostart (`/etc/xdg/autostart/`) ;
-- pose une **icône de lancement sur le bureau** (Programme A).
+- pose une **entrée dans le menu des applications** (Programme A).
 
 Après l'installation, l'utilisateur doit **fermer puis rouvrir sa session** (pour que le groupe `lp` prenne effet et que l'agent démarre).
 
@@ -64,7 +64,7 @@ Après l'installation, l'utilisateur doit **fermer puis rouvrir sa session** (po
 
 ## Licences
 
-- **Code** : GNU Affero General Public License v3 (AGPL-3.0) — voir `LICENSE`.
+- **Code** : GNU Affero General Public License v3 (AGPL-3.0) — voir [`LICENSE`](LICENSE).
 - **Documentation du dépôt** : Creative Commons Attribution (CC BY).
 - **Wiki** : Creative Commons Attribution - Partage dans les mêmes conditions (CC BY-SA 4.0), licence par défaut du wiki Les Portes Logiques.
 
