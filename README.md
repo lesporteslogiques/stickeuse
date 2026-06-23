@@ -10,7 +10,7 @@ Application pour piloter l'imprimante d'étiquettes **Brother QL-570** depuis un
 - Imprime une étiquette à partir d'une **image PNG** préparée par l'utilisateur dans GIMP.
 - Signale, au branchement, qu'une QL-570 est disponible (agent en fond, notification de bureau).
 
-L'image elle-même se fabrique dans **GIMP** (voir `docs/prise-en-main-gimp.md`) : l'appli ne crée pas l'image, elle l'imprime.
+L'image elle-même se fabrique dans **GIMP** (voir <:docs/prise-en-main-gimp.md>) : l'appli ne crée pas l'image, elle l'imprime.
 
 ## Architecture (résumé)
 
@@ -74,5 +74,5 @@ Conçue et développée par **Vitally LUBIN** en 2026.
 
 ## Liens
 
-- FabLab Les Portes Logiques : <https://lesporteslogiques.net>
+- Wiki Les Portes Logiques : <https://lesporteslogiques.net/wiki/materiel/imprimante_thermique_brother_ql-570>
 - Dépôt : <https://github.com/lesporteslogiques/stickeuse>
