@@ -16,6 +16,7 @@ import os                            # os.path.basename : le nom d'un fichier sa
 import tkinter as tk                 # Tkinter : la boîte à outils d'interface graphique du standard Python
 from tkinter import messagebox       # fenêtres-message toutes faites (info, erreur, avertissement)
 from tkinter import filedialog       # la fenêtre standard « choisir un fichier »
+from PIL import Image, ImageTk        # Pillow : ouvrir l'image (Image) et la rendre affichable par Tkinter (ImageTk)
 
 import coeur                         # le moteur : determiner_cible, valider_png, imprimer, ETIQUETTE…
 from journal import obtenir_journal  # le journal partagé du poste
@@ -83,7 +84,9 @@ def fenetre_principale(journal, cible):
     """La fenêtre d'impression : choisir un PNG (validé), un nombre, imprimer."""
     fenetre = tk.Tk()                          # second écran = sa propre fenêtre racine
     fenetre.title("Stickeuse QL-570")
-    etat = {"chemin": None}                    # le PNG validé prêt à imprimer (None tant qu'aucun)
+    etat = {"chemin": None,                    # le PNG validé prêt à imprimer (None tant qu'aucun)
+            "apercu": None}                    # la PhotoImage de l'aperçu : on la GARDE ici pour que
+                                               # le ramasse-miettes ne la supprime pas (sinon aperçu blanc)
 
     # ── En-tête (l'icône imprimante, un fichier image, viendra plus tard) ──
     tk.Label(fenetre, text="Stickeuse QL-570", font=("", 16, "bold")).pack(pady=(16, 2))
@@ -99,6 +102,12 @@ def fenetre_principale(journal, cible):
     bouton_parcourir = tk.Button(ligne, text="Parcourir…")         # sa command est câblée plus bas
     bouton_parcourir.pack(side="left")
     tk.Label(ligne, textvariable=nom_fichier, fg="#555").pack(side="left", padx=10)
+
+    # ── Zone d'aperçu (sous « Parcourir », au-dessus d'« Imprimer ») ──
+    # Un Label vide qui accueillera la vignette du PNG validé. Tant qu'aucun
+    # fichier valide n'est choisi, il reste vide ; parcourir() le remplit ou le vide.
+    apercu = tk.Label(fenetre)                 # pas d'image au départ
+    apercu.pack(pady=8)
 
     # ── Section « Nombre d'exemplaires » ──
     cadre_nb = tk.Frame(fenetre)
@@ -123,6 +132,20 @@ def fenetre_principale(journal, cible):
 
     def parcourir():
         """Choisir un fichier → le VALIDER (C3-A) → activer ou non « Imprimer »."""
+
+        def vider_apercu():
+            """Efface la vignette (fichier refusé, ou aucun fichier)."""
+            apercu.config(image="")            # plus d'image dans le Label
+            etat["apercu"] = None              # on lâche la référence gardée
+
+        def montrer_apercu(chemin_png):
+            """Affiche une vignette du PNG validé, proportions préservées."""
+            image = Image.open(chemin_png)
+            image.thumbnail((200, 200))        # réduit SANS déformer (au plus 200 px de côté)
+            photo = ImageTk.PhotoImage(image)  # version affichable par Tkinter
+            apercu.config(image=photo)
+            etat["apercu"] = photo             # ← on GARDE la référence (sinon ramasse-miettes → aperçu blanc)
+
         chemin = filedialog.askopenfilename(
             title="Choisir un PNG",
             filetypes=[("Images PNG", "*.png"), ("Tous les fichiers", "*")],
@@ -135,11 +158,13 @@ def fenetre_principale(journal, cible):
         except coeur.ErreurStickeuse as e:     # refus DUR (E-C3-1 / E-C3-2)
             journal.warning(f"{e.code} {e}")
             etat["chemin"] = None
+            vider_apercu()                     # fichier non imprimable → pas d'aperçu
             bouton_imprimer.config(state="disabled")   # on (re)désactive : fichier non imprimable
             messagebox.showerror(f"Fichier refusé [{e.code}]", str(e))
             return
         # Fichier accepté (avec ou sans avertissement souple) → on peut imprimer.
         etat["chemin"] = chemin
+        montrer_apercu(chemin)                 # aperçu seulement APRÈS validation réussie
         bouton_imprimer.config(state="normal")
         if avertissement is not None:          # E-C3-3 : trop de gris, mais non bloquant
             journal.warning(f"{avertissement.code} {avertissement}")
