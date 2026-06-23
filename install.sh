@@ -177,22 +177,14 @@ NoDisplay=true
 X-GNOME-Autostart-enabled=true
 EOF
 
-# ── g. Icône sur le bureau (Programme A) ─────────────────────────────────────
-# On DÉCOUVRE le dossier « Bureau » via xdg-user-dir (il gère la locale : Bureau
-# en français, Desktop en anglais…). On ne code pas le nom en dur. runuser
-# exécute la commande EN TANT QUE l'utilisateur (sans mot de passe, car on est
-# root), pour lire SA configuration.
-DESKTOP_DIR="$(runuser -u "$TARGET_USER" -- xdg-user-dir DESKTOP 2>/dev/null || true)"
-if [ -z "$DESKTOP_DIR" ] || [ "$DESKTOP_DIR" = "$TARGET_HOME" ]; then
-    # xdg-user-dir absent, ou Bureau non encore configuré (compte jamais ouvert
-    # en session graphique) → repli raisonnable + avertissement.
-    DESKTOP_DIR="$TARGET_HOME/Desktop"
-    avert "Dossier Bureau non détecté : repli sur $DESKTOP_DIR."
-fi
-ICONE="$DESKTOP_DIR/stickeuse-ql570.desktop"
-info "Pose de l'icône sur le bureau : $ICONE"
-mkdir -p "$DESKTOP_DIR"
-cat > "$ICONE" <<EOF
+# ── g. Entrée dans le menu des applications (Programme A) ────────────────────
+# /usr/share/applications/ est le dossier système que lit le menu « Afficher les
+# applications ». Un .desktop posé là apparaît pour TOUS les comptes du poste,
+# sans manipulation côté utilisateur (pas de « autoriser le lancement » comme sur
+# le Bureau). C'est l'emplacement standard et le plus robuste pour un lanceur.
+LANCEUR="/usr/share/applications/stickeuse-ql570.desktop"
+info "Pose de l'entrée de menu : $LANCEUR"
+cat > "$LANCEUR" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Stickeuse QL-570
@@ -200,14 +192,13 @@ Comment=Imprimer une étiquette sur la Brother QL-570
 Exec=$PY $APP_DIR/programme_a.py
 Icon=$ICON_REF
 Terminal=false
+Categories=Utility;
 EOF
-# L'icône doit APPARTENIR à l'utilisateur et être exécutable.
-chown "$TARGET_USER:$TARGET_GROUP" "$ICONE"
-chmod 0755 "$ICONE"
-# Sur GNOME, une icône de bureau doit EN PLUS être marquée « de confiance ».
-# gio peut être absent selon le bureau → « au mieux », on n'échoue pas.
-runuser -u "$TARGET_USER" -- gio set "$ICONE" metadata::trusted true 2>/dev/null \
-    || avert "Icône non marquée « de confiance » : selon le bureau, un clic droit « Autoriser le lancement » peut être nécessaire au 1ᵉʳ usage."
+chmod 0644 "$LANCEUR"   # lisible par tous ; un .desktop de menu n'a pas besoin d'être exécutable
+# Rafraîchir la base des applications pour que l'entrée apparaisse sans attendre.
+# update-desktop-database peut être absent selon le poste → « au mieux ».
+update-desktop-database /usr/share/applications 2>/dev/null \
+    || avert "update-desktop-database indisponible : l'entrée apparaîtra au prochain rafraîchissement du menu (ou à la réouverture de session)."
 
 # ── Fin ──────────────────────────────────────────────────────────────────────
 echo

@@ -48,16 +48,12 @@ if [ -f "$REGLE_UDEV" ]; then
     udevadm trigger || avert "udevadm trigger a renvoyé une erreur (sans gravité)."
 fi
 
-# ── g⁻¹. Retirer l'icône du bureau de l'utilisateur ──────────────────────────
-# Même découverte du Bureau qu'à l'installation, pour viser le bon fichier.
-DESKTOP_DIR="$(runuser -u "$TARGET_USER" -- xdg-user-dir DESKTOP 2>/dev/null || true)"
-if [ -z "$DESKTOP_DIR" ] || [ "$DESKTOP_DIR" = "$TARGET_HOME" ]; then
-    DESKTOP_DIR="$TARGET_HOME/Desktop"
-fi
-ICONE="$DESKTOP_DIR/stickeuse-ql570.desktop"
-if [ -f "$ICONE" ]; then
-    info "Suppression de l'icône du bureau : $ICONE"
-    rm -f "$ICONE"
+# ── g⁻¹. Retirer l'entrée du menu des applications ───────────────────────────
+LANCEUR="/usr/share/applications/stickeuse-ql570.desktop"
+if [ -f "$LANCEUR" ]; then
+    info "Suppression de l'entrée de menu : $LANCEUR"
+    rm -f "$LANCEUR"
+    update-desktop-database /usr/share/applications 2>/dev/null || true
 fi
 
 # ── c⁻¹ / b⁻¹. Retirer l'appli et son venv ───────────────────────────────────
