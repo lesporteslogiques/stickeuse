@@ -4,12 +4,14 @@
 
 *Contexte d'origine : fabriquer une image d'étiquette pour l'imprimante QL-570. Les valeurs propres à ce cas sont signalées « (exemple QL-570) » ; le reste est général.*
 
+> **Des modèles sous la main.** L'installation dépose des **mires de test** dans ton dossier « Images » (`test-stickeuse-…`), une par rouleau et par orientation. Leur nom porte la référence du rouleau et les dimensions en pixels : `test-stickeuse-DK11208-413x991px-portrait.png`. Elles sont déjà au bon format — ouvre celle qui correspond à ton rouleau dans GIMP pour voir à quoi ressemble une image conforme, ou pars-en comme base. Elles servent aussi à vérifier l'imprimante : la réglette qu'elles portent se mesure avec une vraie règle.
+
 ## 1. Créer une nouvelle image
 
 `Fichier > Nouvelle image`
 
 - **Largeur** et **Hauteur** : en **pixels** (vérifier que l'unité à droite est bien `px`).
-  - *(exemple QL-570 : 413 × 991 px pour une étiquette DK-11208)*
+  - *(exemple QL-570 : **413 × 991 px** pour une étiquette DK-11208, **696 × 1109 px** pour une DK-11202 — la Stickeuse rappelle les dimensions attendues sous « QL-570 prête », une fois le rouleau déclaré)*
 - Déplier **Options avancées** :
   - **Résolution X et Y** : `300` (unité *pixels/in* = points par pouce, ppp) — la définition d'impression.
   - **Espace de couleurs** : **Niveaux de gris** si l'image finale est en noir et blanc ; sinon *Couleur RVB*.
@@ -67,3 +69,7 @@ Régler la **taille** du trait dans les options de l'outil (à gauche).
 - Le **déplacement / alignement** précis des éléments (outil Déplacer, touche **M**).
 - **Importer ou coller** une image existante dans le canevas.
 - **Redimensionner / recadrer** (`Image > Échelle et taille de l'image`, `Image > Taille du canevas`).
+
+---
+
+*Projet Stickeuse QL-570 — Vitally LUBIN, FabLab Les Portes Logiques (2026) — documentation sous CC BY.*

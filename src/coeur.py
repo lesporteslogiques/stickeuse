@@ -6,14 +6,17 @@ Construit en trois étapes : C1 détection · C2 accès · C3 validation + impre
 
 Les termes techniques (motif, nœud, backend, dataclass…) sont définis simplement
 dans docs/lexique.md.
+
+Auteurice : Vitally LUBIN — FabLab Les Portes Logiques (2026) — AGPL-3.0.
 """
 
 import glob                            # liste les fichiers correspondant à un motif (jokers façon shell)
 import os                              # outils du système ; ici os.access, pour tester un droit
-import shutil                          # shutil.which : retrouver un exécutable dans le PATH
 import subprocess                      # lancer une commande externe (brother_ql) en sous-processus
+import sys                             # sys.prefix : la racine de l'environnement virtuel qui nous exécute
 import pyudev                          # lecture d'udev : la base qui décrit les périphériques
 from dataclasses import dataclass      # fabrique des objets de données (constructeur automatique)
+from pathlib import Path               # chemins manipulés comme des objets, plus lisibles que des chaînes
 from PIL import Image                  # Pillow : ouvrir et inspecter des images (déjà installé via brother_ql)
 
 
@@ -159,17 +162,39 @@ def determiner_cible():
 
 @dataclass(frozen=True)
 class Etiquette:
-    """Décrit le rouleau d'étiquettes chargé. C'est l'UNIQUE constante de
-    configuration de l'appli : pour gérer un autre rouleau, on ne touche qu'ici.
-    « frozen=True » la rend immuable — une vraie constante, qu'on ne risque pas
-    de modifier par accident en cours de route."""
+    """Décrit un rouleau d'étiquettes. « frozen=True » la rend immuable : une
+    vraie constante, qu'on ne risque pas de modifier par accident."""
     identifiant: str   # identifiant brother_ql, ex. "39x90" (≠ des mm réels : piège de nommage)
     largeur: int       # largeur imprimable en pixels (portrait)
     hauteur: int       # hauteur imprimable en pixels (portrait)
+    reference: str     # la référence Brother, ex. "DK-11208" — ce qui est écrit sur la boîte
+    libelle: str       # ce qu'on montre à l'humain, ex. "DK-11208 — 38 × 90 mm"
+    indisponible: str = ""   # si non vide : POURQUOI ce rouleau n'est pas utilisable
+                             # aujourd'hui. L'interface le montre alors grisé, avec
+                             # cette raison. Vider la chaîne suffit à le réactiver.
 
 
-# Le rouleau de cet exemplaire : DK-11208 (38×90 mm, prédécoupé).
-ETIQUETTE = Etiquette(identifiant="39x90", largeur=413, hauteur=991)
+# Les rouleaux dont dispose le FabLab. Pour en ajouter un, une ligne suffit ici :
+# c'est le SEUL endroit où la configuration matérielle des rouleaux est écrite.
+#
+# Attention au piège de nommage de brother_ql : son identifiant « 39x90 » désigne
+# un rouleau de 38 mm, et « 62x100 » un rouleau de 62 mm dont la zone imprimable
+# ne fait que 59 mm. Les millimètres du libellé sont ceux de la BOÎTE ; les pixels
+# sont ceux de la zone réellement imprimable. Ne jamais déduire les uns des autres.
+#
+# Les deux rouleaux sont PRÉDÉCOUPÉS : leurs dimensions sont donc imposées au
+# pixel près, dans les deux sens. Un rouleau continu (DK-22xxx), lui, n'imposerait
+# que sa largeur — il faudrait alors une seconde façon de valider.
+ETIQUETTES = {
+    "39x90": Etiquette(identifiant="39x90", largeur=413, hauteur=991,
+                       reference="DK-11208", libelle="DK-11208 — 38 × 90 mm"),
+    "62x100": Etiquette(identifiant="62x100", largeur=696, hauteur=1109,
+                        reference="DK-11202", libelle="DK-11202 — 62 × 100 mm",
+                        indisponible="en attente de réparation de la machine"),
+}
+
+# Celui qu'on propose par défaut : le plus courant au FabLab.
+ETIQUETTE = ETIQUETTES["39x90"]
 
 # Au-delà de cette proportion de pixels gris (ni noirs ni blancs), on AVERTIT
 # que l'image est sans doute floue ou tramée. Repère mesuré : du texte net
@@ -219,6 +244,33 @@ def valider_png(chemin, etiquette):
     return None   # tout est bon, aucun avertissement
 
 
+def trouver_brother_ql():
+    """Renvoie le chemin de l'exécutable brother_ql, ou None s'il est absent.
+
+    On le DÉDUIT au lieu de le chercher : l'application tourne sous
+    l'interpréteur de son propre environnement virtuel, et pip y a posé
+    brother_ql dans le dossier bin/ de ce venv. sys.prefix désigne justement la
+    RACINE du venv actif — rien à coder en dur, rien qui dépende de la
+    configuration du poste.
+
+    Pourquoi sys.prefix et PAS sys.executable : dans un venv, bin/python est un
+    LIEN SYMBOLIQUE vers le python du système. Remonter à son dossier (surtout
+    après .resolve(), qui suit les liens) mène donc à /usr/bin, hors du venv.
+    sys.prefix, lui, est calculé par Python au démarrage et pointe toujours sur
+    le venv réel.
+
+    Pourquoi PAS shutil.which() : cette fonction ne fouille que le PATH, une
+    variable qui change selon qui lance le programme. Lancer un interpréteur de
+    venv n'ACTIVE pas le venv — son dossier n'est pas ajouté au PATH — donc
+    which() ne voit rien ici. Pire, il pourrait trouver une AUTRE copie de
+    brother_ql installée ailleurs sur le poste : c'est ce qui a masqué ce bug
+    pendant deux déploiements. Un seul candidat possible, pas d'ambiguïté."""
+    voisin = Path(sys.prefix) / "bin" / "brother_ql"
+    if voisin.is_file() and os.access(voisin, os.X_OK):   # présent ET exécutable
+        return str(voisin)
+    return None
+
+
 def imprimer(cible, etiquette, chemin):
     """C3-B : envoie un PNG DÉJÀ VALIDÉ à l'imprimante, via la commande brother_ql.
 
@@ -226,14 +278,14 @@ def imprimer(cible, etiquette, chemin):
     DÉTECTÉES (rien en dur), puis la lance. Lève ErreurStickeuse si l'envoi
     échoue ; ne renvoie rien s'il réussit."""
 
-    # Où est l'exécutable brother_ql ? (comme le ferait le shell en fouillant le
-    # PATH). Absent → problème d'installation, impression impossible.
-    programme = shutil.which("brother_ql")
+    # Où est l'exécutable brother_ql ? Dans l'environnement virtuel de l'appli,
+    # et nulle part ailleurs. Absent → installation incomplète.
+    programme = trouver_brother_ql()
     if programme is None:
         raise ErreurStickeuse(
             "E-C3-6",
-            "Commande « brother_ql » introuvable. Vérifier son installation "
-            "et que son dossier (p. ex. ~/.local/bin) est dans le PATH.",
+            "Commande « brother_ql » absente de l'environnement virtuel de "
+            "l'application. Installation incomplète : réinstaller la Stickeuse.",
         )
 
     # La commande en LISTE (pas une chaîne) : subprocess gère lui-même les
@@ -244,7 +296,7 @@ def imprimer(cible, etiquette, chemin):
         "-m", cible.modele,           # modèle détecté
         "-p", cible.adresse,          # adresse détectée
         "print",
-        "-l", etiquette.identifiant,  # identifiant d'étiquette (constante de config)
+        "-l", etiquette.identifiant,  # identifiant du rouleau déclaré chargé
         chemin,                       # le PNG validé
     ]
 
@@ -259,7 +311,10 @@ def imprimer(cible, etiquette, chemin):
 
 if __name__ == "__main__":          # ne s'exécute QUE si on lance coeur.py directement ;
                                     # à l'import (depuis programme_a / programme_b), ce bloc est ignoré.
-    import sys
+    # ATTENTION, test en ligne de commande : lancer ce fichier avec le python du
+    # système ne trouvera pas brother_ql (E-C3-6), puisqu'il vit dans le venv de
+    # l'appli. Utiliser l'interpréteur du venv, comme le fait l'entrée de menu :
+    #     /opt/ql570/venv/bin/python coeur.py mon-etiquette.png
     from journal import obtenir_journal     # le journal ne sert qu'au lancement, pas à l'import
 
     journal = obtenir_journal()             # configure le journal du poste (une seule fois)
@@ -270,14 +325,27 @@ if __name__ == "__main__":          # ne s'exécute QUE si on lance coeur.py dir
         if len(sys.argv) < 2:
             print("Imprimante prête :", cible)
             print("Pour imprimer, donne le chemin d'un PNG, par exemple :")
-            print("    python3 coeur.py test/bekhauf.png")
+            print("    python3 coeur.py test/bekhauf.png [39x90|62x100]")
         else:
             chemin = sys.argv[1]
-            avertissement = valider_png(chemin, ETIQUETTE)   # C3-A
+            # Second argument facultatif : l'identifiant du rouleau chargé.
+            #     python3 coeur.py mon-etiquette.png 62x100
+            cle = sys.argv[2] if len(sys.argv) > 2 else "39x90"
+            if cle not in ETIQUETTES:
+                raise ErreurStickeuse("E-C3-7", f"Rouleau inconnu : {cle}. "
+                                      f"Connus : {', '.join(ETIQUETTES)}.")
+            etiquette = ETIQUETTES[cle]
+            if etiquette.indisponible:
+                raise ErreurStickeuse(
+                    "E-C3-8",
+                    f"Rouleau {etiquette.reference} indisponible : "
+                    f"{etiquette.indisponible}.")
+            journal.info(f"Rouleau : {etiquette.libelle}")
+            avertissement = valider_png(chemin, etiquette)   # C3-A
             if avertissement is not None:
                 print(f"[avertissement {avertissement.code}] {avertissement}")
                 journal.warning(f"{avertissement.code} {avertissement}")
-            imprimer(cible, ETIQUETTE, chemin)               # C3-B
+            imprimer(cible, etiquette, chemin)               # C3-B
             print("Étiquette imprimée.")                     # C3-C
             journal.info(f"Étiquette imprimée : {chemin} (modèle {cible.modele})")
     except ErreurStickeuse as e:

@@ -6,11 +6,13 @@ bureau « QL-570 détectée ». Il N'IMPRIME JAMAIS : il ne fait que détecter e
 signaler. Il reconnaît l'imprimante par la **même identité USB que C1** (cœur),
 et s'appuie sur le journal — son seul moyen de trace, faute de fenêtre.
 
-État : B2 — finitions : arrêt propre au Ctrl-C, et journalisation du
-débranchement (identification par CHEMIN mémorisé : voir surveiller()).
+Il s'arrête proprement au Ctrl-C, et journalise aussi le débranchement
+(identification par CHEMIN mémorisé : voir surveiller()).
 
 Les termes (udev, moniteur, notification, chemin sysfs…) sont définis dans
 docs/lexique.md.
+
+Auteurice : Vitally LUBIN — FabLab Les Portes Logiques (2026) — AGPL-3.0.
 """
 
 import shutil                        # shutil.which : retrouver notify-send sur le PATH

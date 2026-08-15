@@ -83,7 +83,8 @@ apt-get update -qq || avert "apt-get update a échoué (on tente quand même l'i
 #   python3-tk     : l'interface graphique (Tkinter) du Programme A
 #   python3-venv   : nécessaire pour CRÉER l'environnement virtuel ci-dessous
 #   libusb-1.0-0   : la bibliothèque système que pyusb utilise (voie de repli)
-#   xdg-user-dirs  : fournit « xdg-user-dir », qui dit où est le Bureau (locale)
+#   xdg-user-dirs  : fournit « xdg-user-dir », qui dit où est le dossier
+#                    « Images » de l'utilisateur, quelle que soit la langue du poste
 info "apt : dépendances essentielles…"
 apt-get install -y python3-tk python3-venv libusb-1.0-0 xdg-user-dirs \
     || erreur "Échec d'installation des dépendances essentielles (apt)."
@@ -94,6 +95,14 @@ apt-get install -y python3-tk python3-venv libusb-1.0-0 xdg-user-dirs \
 info "apt : libnotify-bin (optionnel)…"
 apt-get install -y libnotify-bin \
     || avert "libnotify-bin non installé : pas de pop-up, le reste fonctionne."
+
+# OPTIONNELLE — GIMP : ce n'est pas une dépendance de l'appli (qui imprime un
+# PNG, d'où qu'il vienne), mais l'outil avec lequel l'utilisateur FABRIQUE son
+# image. On le pose ici parce que l'installation est le seul moment où quelqu'un
+# a les droits root ; sans lui, l'appli le signale à l'accueil et fonctionne.
+info "apt : gimp (optionnel, pour fabriquer les images)…"
+apt-get install -y gimp \
+    || avert "gimp non installé : l'appli imprimera, mais l'utilisateur ne pourra pas fabriquer d'image ici."
 
 # ── b. Environnement virtuel + paquets pip ───────────────────────────────────
 mkdir -p "$APP_DIR"
@@ -136,6 +145,65 @@ if [ -f "$ICONE_SRC" ]; then
 else
     ICON_REF="printer"
     avert "Icône stickeuseql570.png absente des sources : repli sur l'icône générique « printer »."
+fi
+
+# ── c bis. Mires de test ─────────────────────────────────────────────────────
+# Images de contrôle aux formats imposés, en noir et blanc pur, 300 ppp : une
+# par rouleau ET par orientation. Elles vérifient, juste après l'installation,
+# que toute la chaîne imprime correctement — densité, finesse de trait, échelle,
+# alignement, orientation. Regénérables par test/generer-mire.py ; absentes des
+# sources, on continue sans elles.
+#
+# On les pose à DEUX endroits, pour deux usages distincts :
+#   - dans /opt/ql570/ : les exemplaires de référence, qui suivent l'appli ;
+#   - dans le dossier « Images » de l'utilisateur : là où « Parcourir… » ouvre,
+#     donc là où la personne les trouvera sans rien chercher. Le nom commence par « test- » et
+# non par « mire- » : dans la fenêtre « Parcourir… », il faut que quelqu'un
+# qui n'est pas du métier comprenne à quoi sert ce fichier. Le nom porte
+# aussi la référence du rouleau et les dimensions en pixels : la fenêtre
+# « Parcourir… » de Tk n'affiche QUE le nom du fichier — pas de colonne de
+# description, pas d'infobulle, et rien ne permet d'en ajouter.
+MIRES="test-stickeuse-DK11208-413x991px-portrait.png test-stickeuse-DK11208-991x413px-paysage.png test-stickeuse-DK11202-696x1109px-portrait.png test-stickeuse-DK11202-1109x696px-paysage.png"
+# Y a-t-il au moins une mire à installer ? On interroge la LISTE, jamais un nom
+# écrit à part : un nom en double, c'est un renommage à moitié fait qui attend.
+MIRE_TROUVEE="non"
+for mire in $MIRES; do
+    [ -f "$SRC_DIR/$mire" ] && MIRE_TROUVEE="oui"
+done
+
+if [ "$MIRE_TROUVEE" = "oui" ]; then
+    for mire in $MIRES; do
+        [ -f "$SRC_DIR/$mire" ] || continue          # chaque mire est facultative
+        install -m 0644 "$SRC_DIR/$mire" "$APP_DIR/$mire"
+        info "Mire de test installée : $APP_DIR/$mire"
+    done
+
+    # Où est le dossier « Images » de CET utilisateur ? Il s'appelle Images,
+    # Pictures, Bilder… selon la langue du poste : on demande à xdg-user-dir au
+    # lieu de deviner. « runuser » exécute la commande EN TANT QUE l'utilisateur
+    # (nous sommes root) : sans cela, on lirait les dossiers de root.
+    DOSSIER_IMAGES="$(runuser -l "$TARGET_USER" -c 'xdg-user-dir PICTURES' 2>/dev/null || true)"
+    # Repli : si xdg-user-dir est absent ou renvoie le home lui-même, on crée
+    # un dossier Images plutôt que de déposer le fichier en vrac dans le home.
+    if [ -z "$DOSSIER_IMAGES" ] || [ "$DOSSIER_IMAGES" = "$TARGET_HOME" ]; then
+        DOSSIER_IMAGES="$TARGET_HOME/Images"
+    fi
+    # On ne s'approprie QUE ce qu'on crée : si le dossier existait déjà, il
+    # appartient à l'utilisateur et on n'a rien à y changer.
+    if [ ! -d "$DOSSIER_IMAGES" ]; then
+        mkdir -p "$DOSSIER_IMAGES"
+        chown "$TARGET_USER:$TARGET_GROUP" "$DOSSIER_IMAGES"
+    fi
+    for mire in $MIRES; do
+        [ -f "$SRC_DIR/$mire" ] || continue
+        install -m 0644 "$SRC_DIR/$mire" "$DOSSIER_IMAGES/$mire"
+        # Le script tourne en root : sans ce chown, le fichier déposé chez
+        # l'utilisateur ne lui appartiendrait pas (lisible, mais pas gérable).
+        chown "$TARGET_USER:$TARGET_GROUP" "$DOSSIER_IMAGES/$mire"
+        info "Mire copiée pour $TARGET_USER : $DOSSIER_IMAGES/$mire"
+    done
+else
+    avert "Aucune mire de test dans les sources : installation sans image de contrôle."
 fi
 
 # ── d. Droit d'accès à l'imprimante : groupe « lp » ──────────────────────────
@@ -182,7 +250,32 @@ EOF
 # applications ». Un .desktop posé là apparaît pour TOUS les comptes du poste,
 # sans manipulation côté utilisateur (pas de « autoriser le lancement » comme sur
 # le Bureau). C'est l'emplacement standard et le plus robuste pour un lanceur.
+#
+# Trois choix dans le contenu ci-dessous :
+#   - PAS de « Categories= » : sur GNOME, une catégorie (Utility, System…) fait
+#     ranger l'application dans un SOUS-DOSSIER de la grille (« Utilitaires »…),
+#     où personne ne pense à aller la chercher — elle n'apparaissait plus qu'à
+#     la recherche. Sans catégorie, elle reste à la racine, visible.
+#   - « Keywords » enrichit la recherche : taper « étiquette » ou « brother »
+#     suffit à la trouver.
+#   - « StartupWMClass » fait le lien entre la FENÊTRE ouverte et cette entrée
+#     de menu : sans lui, le dock afficherait l'appli en cours comme une fenêtre
+#     anonyme, avec une icône générique. Sa valeur doit être exactement celle du
+#     tk.Tk(className=…) de programme_a.py. Attention à la graphie : Tk met une
+#     majuscule à la première lettre ET passe le reste en minuscules, d'où
+#     « Stickeuse-ql570 » et non « Stickeuse-QL570 ». Valeur vérifiée sur une
+#     fenêtre ouverte avec « xprop WM_CLASS ».
 LANCEUR="/usr/share/applications/stickeuse-ql570.desktop"
+
+# Une version précédente avait-elle déclaré une catégorie ? On le regarde AVANT
+# d'écraser le fichier : c'est le seul cas qui obligera à toucher au rangement
+# de la grille (étape h). Sur une machine neuve, ou déjà à jour, la réponse est
+# non — et on ne touchera à rien.
+ANCIENNE_CATEGORIE="non"
+if [ -f "$LANCEUR" ] && grep -q "^Categories=" "$LANCEUR"; then
+    ANCIENNE_CATEGORIE="oui"
+fi
+
 info "Pose de l'entrée de menu : $LANCEUR"
 cat > "$LANCEUR" <<EOF
 [Desktop Entry]
@@ -192,13 +285,50 @@ Comment=Imprimer une étiquette sur la Brother QL-570
 Exec=$PY $APP_DIR/programme_a.py
 Icon=$ICON_REF
 Terminal=false
-Categories=Utility;
+Keywords=etiquette;label;imprimante;brother;stickeuse;QL570;
+StartupWMClass=Stickeuse-ql570
 EOF
 chmod 0644 "$LANCEUR"   # lisible par tous ; un .desktop de menu n'a pas besoin d'être exécutable
 # Rafraîchir la base des applications pour que l'entrée apparaisse sans attendre.
 # update-desktop-database peut être absent selon le poste → « au mieux ».
 update-desktop-database /usr/share/applications 2>/dev/null \
     || avert "update-desktop-database indisponible : l'entrée apparaîtra au prochain rafraîchissement du menu (ou à la réouverture de session)."
+
+# ── h. Cas de migration : sortir l'appli d'un ancien dossier de la grille ────
+# Poser le .desktop SUFFIT à faire apparaître l'application dans le lanceur :
+# GNOME ajoute les nouvelles applications à sa grille tout seul, sans rien
+# déranger. On ne touche donc normalement à RIEN ici.
+#
+# Une seule exception, repérée plus haut : si une version précédente déclarait
+# une catégorie (Utility…), GNOME a mémorisé un rangement plaçant l'appli dans
+# le dossier « Utilitaires ». Retirer la catégorie ne l'en fait pas sortir : ce
+# souvenir survit à la mise à jour, et l'application reste introuvable.
+#
+# Dans CE cas seulement, on efface la mémoire de rangement
+# (« gsettings reset app-picker-layout ») : GNOME recalcule sa grille et
+# l'application revient à la racine. Le prix à payer — un rangement personnel
+# remis à plat — n'est donc demandé qu'une fois, à la migration, et jamais lors
+# d'une réinstallation ordinaire.
+#
+# Ce réglage est PERSONNEL : on l'écrit en tant que l'utilisateur, en passant
+# par le « bus » de sa session (/run/user/<uid>/bus), qui n'existe que s'il est
+# connecté. Sinon on ne force rien : étape « au mieux », jamais bloquante.
+UID_CIBLE="$(id -u "$TARGET_USER")"
+PRISE_BUS="/run/user/$UID_CIBLE/bus"
+if [ "$ANCIENNE_CATEGORIE" = "non" ]; then
+    info "Grille d'applications : rangement laissé intact."
+elif [ -S "$PRISE_BUS" ]; then
+    if runuser -u "$TARGET_USER" -- env DBUS_SESSION_BUS_ADDRESS="unix:path=$PRISE_BUS" \
+        gsettings reset org.gnome.shell app-picker-layout 2>/dev/null; then
+        info "Migration d'une ancienne version : rangement de la grille réinitialisé."
+    else
+        avert "Grille d'applications non réinitialisée (bureau non GNOME ?)."
+        avert "  Sans effet sur le fonctionnement : l'appli reste trouvable par la recherche."
+    fi
+else
+    avert "Session de $TARGET_USER non ouverte : grille d'applications non réinitialisée."
+    avert "  Elle le sera au besoin en relançant ce script une fois connecté·e."
+fi
 
 # ── Fin ──────────────────────────────────────────────────────────────────────
 echo

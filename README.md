@@ -2,13 +2,17 @@
 
 Application pour piloter l'imprimante d'étiquettes **Brother QL-570** depuis un poste Debian, utilisable sans compétence technique. Développée pour le FabLab **Les Portes Logiques** (Quimper).
 
-> **Statut : fonctionnelle, en cours de déploiement.** Le module cœur, la journalisation et les deux programmes (impression + agent) sont codés et testés sur matériel. Les scripts `install.sh` / `uninstall.sh` sont écrits et restent à éprouver lors d'un premier déploiement complet.
+> **Statut : opérationnelle.** Module cœur, journalisation, application d'impression et agent de détection sont codés et validés sur matériel. Les scripts `install.sh` / `uninstall.sh` ont été éprouvés lors de déploiements complets, sous Debian 12 et Debian 13.
 
 ## Ce que fait l'appli
 
 - Détecte automatiquement l'imprimante branchée (port et modèle) — rien n'est codé en dur.
 - Imprime une étiquette à partir d'une **image PNG** préparée par l'utilisateur dans GIMP.
+- Gère **deux rouleaux** : DK-11208 (38 × 90 mm) et DK-11202 (62 × 100 mm), déclarés à l'accueil — la QL-570 ne sait pas dire lequel est chargé. Un rouleau peut être déclaré temporairement **indisponible** : il apparaît grisé, avec le motif, au lieu d'être masqué.
+- Imprime plusieurs exemplaires d'affilée, avec possibilité d'**annuler** ceux qui restent.
 - Signale, au branchement, qu'une QL-570 est disponible (agent en fond, notification de bureau).
+- Fournit des **mires de test** (`src/test-stickeuse-*.png`, une par rouleau et par orientation ; chacune porte sa référence imprimée), copiées dans le dossier « Images » de l'utilisateur à l'installation : elles vérifient d'un seul tirage la densité, la finesse de trait, l'échelle et l'orientation.
+- Signale à l'accueil si **GIMP** manque sur le poste (sans bloquer : l'appli imprime tout PNG conforme, d'où qu'il vienne).
 
 L'image elle-même se fabrique dans **GIMP** (voir [`docs/prise-en-main-gimp.md`](docs/prise-en-main-gimp.md)) : l'appli ne crée pas l'image, elle l'imprime.
 
@@ -33,7 +37,7 @@ Trois piliers, détaillés dans [`docs/algorithme-appli-QL570.md`](docs/algorith
 Tout est posé par `install.sh` (voir ci-dessous). Pour mémoire :
 
 - **apt (système), essentielles** : `python3-tk` (interface Tkinter), `python3-venv` (pour créer l'environnement virtuel), `libusb-1.0-0` (voie de repli pyusb), `xdg-user-dirs` (pour localiser le Bureau).
-- **apt (système), optionnelle** : `libnotify-bin` — uniquement la notification de l'agent ; sans elle, l'appli se dégrade en douceur (l'agent écrit dans le journal).
+- **apt (système), optionnelles** : `libnotify-bin` — uniquement la notification de l'agent ; sans elle, l'appli se dégrade en douceur (l'agent écrit dans le journal). `gimp` — pour *fabriquer* les images d'étiquettes sur le poste ; sans lui, l'appli imprime toujours, et le signale à l'accueil.
 - **pip (dans l'environnement virtuel)** : `brother_ql`, `pyudev`, `pyusb`.
 - **Accès au périphérique** : appartenance au groupe `lp` + règle udev (posées à l'installation).
 
@@ -56,7 +60,8 @@ cd /chemin/vers/stickeuse
 - ajoute le compte au groupe `lp` ;
 - pose la règle udev (`/etc/udev/rules.d/`) ;
 - met l'agent en autostart (`/etc/xdg/autostart/`) ;
-- pose une **entrée dans le menu des applications** (Programme A).
+- pose une **entrée dans le menu des applications** (Programme A) ;
+- dépose les **mires de test** dans `/opt/ql570/` et dans le dossier « Images » de l'utilisateur.
 
 Après l'installation, l'utilisateur doit **fermer puis rouvrir sa session** (pour que le groupe `lp` prenne effet et que l'agent démarre).
 

@@ -12,6 +12,8 @@ au cas où le dossier personnel serait partagé sur le réseau.
 Séparation des rôles : ce module dit OÙ va le journal (obtenir_journal, appelé
 une fois au lancement d'un programme) ; ensuite, n'importe quel module écrit
 dedans sans se soucier du fichier.
+
+Auteurice : Vitally LUBIN — FabLab Les Portes Logiques (2026) — AGPL-3.0.
 """
 
 import logging                  # le module de journalisation de la bibliothèque standard

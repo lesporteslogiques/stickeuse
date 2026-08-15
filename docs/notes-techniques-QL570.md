@@ -33,11 +33,11 @@ En Python : `pyudev`, récupérer le périphérique et remonter à son parent US
 
 ## Étiquette
 
-- Rouleau chargé : **DK-11208** = 38 × 90 mm, **prédécoupé** (die-cut).
+- Rouleau chargé au moment de ces relevés : **DK-11208** = 38 × 90 mm, **prédécoupé** (die-cut). *(Un second rouleau, DK-11202 — 62 × 100 mm, 696 × 1109 px, également prédécoupé, a depuis été ajouté au catalogue de l'appli ; il attend la réparation de la machine pour être éprouvé.)*
 - Identifiant `brother_ql` : **`39x90`** (⚠️ piège de nommage : l'outil dit « 39x90 » alors que l'étiquette fait 38 mm).
 - Dimensions imprimables : **413 × 991 px**.
 
-> ⚠️ Ces valeurs (`39x90`, 413 × 991 px) sont **spécifiques à la DK-11208**. Pour gérer d'autres rouleaux DK, chaque étiquette a son **propre identifiant et ses propres dimensions**, à lire via `brother_ql info labels`. Le piège de nommage « 38 mm → `39x90` » n'est qu'un travers parmi d'autres possibles : **ne pas coder l'appli en dur pour une seule étiquette**.
+> ⚠️ Ces valeurs (`39x90`, 413 × 991 px) sont **spécifiques à la DK-11208**. Pour gérer d'autres rouleaux DK, chaque étiquette a son **propre identifiant et ses propres dimensions**, à lire via `brother_ql info labels`. Le piège de nommage « 38 mm → `39x90` » n'est qu'un travers parmi d'autres possibles : **ne pas coder l'appli en dur pour une seule étiquette**. *(Avertissement suivi : `src/coeur.py` porte un catalogue `ETIQUETTES`, un rouleau par ligne.)*
 
 ## Contraintes d'image
 
@@ -64,3 +64,7 @@ Dépendances Debian : `python3-tk` (apt) ; `brother_ql` et `pyudev` (pip).
 - Récupérer et examiner `template_paysage.png` (vestige de l'ancienne « Stickeuse ») — peut renseigner la mise en page d'origine.
 - Confirmer si les dossiers personnels sont **partagés** entre les postes (OP42 / OP51).
 - Définir la **forme exacte de l'interface** : champs de saisie, choix de l'étiquette, aperçu, orientation…
+
+---
+
+*Projet Stickeuse QL-570 — Vitally LUBIN, FabLab Les Portes Logiques (2026) — documentation sous CC BY.*

@@ -35,3 +35,7 @@ c'est le but.
 Cette idée — du code tissé avec sa prose explicative — porte un nom : la
 *programmation lettrée* (Donald Knuth). Notre touche : le faire **simplement,
 pour de vrais débutants**.
+
+---
+
+*Projet Stickeuse QL-570 — Vitally LUBIN, FabLab Les Portes Logiques (2026) — documentation sous CC BY.*
