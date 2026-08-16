@@ -16,31 +16,6 @@ Application pour piloter l'imprimante d'étiquettes **Brother QL-570** depuis un
 
 L'image elle-même se fabrique dans **GIMP** (voir [`docs/prise-en-main-gimp.md`](docs/prise-en-main-gimp.md)) : l'appli ne crée pas l'image, elle l'imprime.
 
-## Architecture (résumé)
-
-Trois piliers, détaillés dans [`docs/algorithme-appli-QL570.md`](docs/algorithme-appli-QL570.md) :
-
-- **Module cœur** ([`src/coeur.py`](src/coeur.py)) — le moteur (détection, accès, impression), testable en ligne de commande.
-- **Transversaux** — catalogue d'erreurs et journalisation ([`src/journal.py`](src/journal.py), un log par poste).
-- **Deux programmes** — l'application d'impression ([`src/programme_a.py`](src/programme_a.py), fenêtre) et l'agent de détection ([`src/programme_b.py`](src/programme_b.py), pop-up), qui partagent le cœur sans communiquer entre eux.
-
-## Documentation
-
-- [`docs/notes-techniques-QL570.md`](docs/notes-techniques-QL570.md) — le contexte matériel vérifié.
-- [`docs/algorithme-appli-QL570.md`](docs/algorithme-appli-QL570.md) — l'organisation et les algorithmes.
-- [`docs/prise-en-main-gimp.md`](docs/prise-en-main-gimp.md) — comment fabriquer l'image de l'étiquette.
-- **Guide d'usage** (côté utilisateur), sur le wiki : <https://lesporteslogiques.net/wiki/materiel/logicos/guideql570>.
-- Le **récit de construction** est tenu sur le wiki des Portes Logiques (le dépôt reste la source de vérité technique).
-
-## Dépendances
-
-Tout est posé par `install.sh` (voir [Installation](#installation)) : rien à installer à la main. Pour mémoire :
-
-- **apt (système), essentielles** : `python3-tk` (interface Tkinter), `python3-venv` (pour créer l'environnement virtuel), `libusb-1.0-0` (voie de repli pyusb), `xdg-user-dirs` (pour localiser le Bureau).
-- **apt (système), optionnelles** : `libnotify-bin` — uniquement la notification de l'agent ; sans elle, l'appli se dégrade en douceur (l'agent écrit dans le journal). `gimp` — pour *fabriquer* les images d'étiquettes sur le poste ; sans lui, l'appli imprime toujours, et le signale à l'accueil.
-- **pip (dans l'environnement virtuel)** : `brother_ql`, `pyudev`, `pyusb`.
-- **Accès au périphérique** : appartenance au groupe `lp` + règle udev (posées à l'installation).
-
 ## Installation
 
 > À faire **une fois par machine**. Il faut pouvoir administrer la machine :
@@ -113,6 +88,10 @@ désinstaller l'appli, s'y trouve et n'est recopié nulle part ailleurs.
 
 **4. Repérez par quelle voie vous pouvez administrer la machine**
 
+Deux tests, dont le second n'est utile que si le premier échoue.
+
+*Test 1 — avez-vous le droit d'utiliser `sudo` ?*
+
 Tapez (ou copiez-collez) la commande ci-dessous, puis appuyez sur
 `Entrée` :
 
@@ -120,35 +99,31 @@ Tapez (ou copiez-collez) la commande ci-dessous, puis appuyez sur
 sudo -v
 ```
 
-Cette commande ne fait rien d'autre que vérifier vos droits. Trois
-réponses possibles :
+- Votre mot de passe de session est demandé et accepté (ou rien n'est
+  demandé du tout), et aucun message d'erreur n'apparaît :
+  → **voie A**, passez à l'étape 5.
+- Le message `<login> n'est pas dans le fichier sudoers` s'affiche : votre
+  compte n'a pas ce droit — c'est le cas des postes du FabLab.
+  → faites le test 2.
 
-- **Votre mot de passe de session est demandé et accepté** (ou rien n'est
-  demandé du tout), et aucun message d'erreur n'apparaît → suivez la
-  **voie A** à l'étape 5.
-- **`<login> n'est pas dans le fichier sudoers`** : votre compte n'a pas
-  le droit d'administrer la machine par `sudo`. C'est le cas des postes du
-  FabLab. Tapez (ou copiez-collez) alors la commande ci-dessous,
-  suivie d'`Entrée` :
+*Test 2 — connaissez-vous le mot de passe de root ?*
 
-  ```bash
-  su -
-  ```
+Tapez (ou copiez-collez) la commande ci-dessous, puis appuyez sur
+`Entrée` :
 
-  Le mot de passe demandé est celui de **root**, pas le vôtre. S'il est
-  accepté, la ligne devant le curseur change et se termine par `#` : vous
-  êtes administrateur. Tapez alors, toujours suivi d'`Entrée` :
+```bash
+su -
+```
 
-  ```bash
-  exit
-  ```
-
-  pour revenir à votre compte, et suivez la **voie B** à l'étape 5.
-- **`su : échec d'authentification`** alors que vous êtes sûr·e du mot de
-  passe, ou aucun mot de passe root connu : le compte root est verrouillé
-  (cas d'une Debian installée sans mot de passe root). **L'installation
-  n'est pas possible sur cette machine** : adressez-vous à la personne qui
-  l'administre.
+- Le mot de passe demandé est celui de **root**, pas le vôtre. **S'il est
+  accepté**, la ligne devant le curseur change et se termine par `#` :
+  vous êtes administrateur. Tapez `exit` puis `Entrée` pour revenir à
+  votre compte.
+  → **voie B**, passez à l'étape 5.
+- **`su : échec d'authentification`**, ou aucun mot de passe root connu :
+  vous n'avez aucun moyen d'administrer cette machine.
+  → **l'installation n'est pas possible ici**, adressez-vous à la personne
+  qui l'administre.
 
 **5. Lancez l'installation**
 
@@ -251,6 +226,9 @@ Vérifiez ensuite, dans cet ordre :
 - l'entrée de menu du programme d'impression ;
 - les mires de test dans `/opt/ql570/` et dans le dossier « Images ».
 
+Le détail des paquets installés, et les raisons de ces choix, sont dans
+[`docs/notes-techniques-QL570.md`](docs/notes-techniques-QL570.md).
+
 ### Si ça coince
 
 - **`git : commande introuvable`** (étape 3) : le programme de
@@ -308,6 +286,22 @@ exit
 Restent volontairement en place : le compte dans le groupe `lp` (partagé
 avec d'autres usages), les paquets système (utilisés ailleurs), les
 journaux (effacés seulement sur confirmation).
+
+## Architecture (résumé)
+
+Trois piliers, détaillés dans [`docs/algorithme-appli-QL570.md`](docs/algorithme-appli-QL570.md) :
+
+- **Module cœur** ([`src/coeur.py`](src/coeur.py)) — le moteur (détection, accès, impression), testable en ligne de commande.
+- **Transversaux** — catalogue d'erreurs et journalisation ([`src/journal.py`](src/journal.py), un log par poste).
+- **Deux programmes** — l'application d'impression ([`src/programme_a.py`](src/programme_a.py), fenêtre) et l'agent de détection ([`src/programme_b.py`](src/programme_b.py), pop-up), qui partagent le cœur sans communiquer entre eux.
+
+## Documentation
+
+- [`docs/notes-techniques-QL570.md`](docs/notes-techniques-QL570.md) — le contexte matériel vérifié et les dépendances.
+- [`docs/algorithme-appli-QL570.md`](docs/algorithme-appli-QL570.md) — l'organisation et les algorithmes.
+- [`docs/prise-en-main-gimp.md`](docs/prise-en-main-gimp.md) — comment fabriquer l'image de l'étiquette.
+- **Guide d'usage** (côté utilisateur), sur le wiki : <https://lesporteslogiques.net/wiki/materiel/logicos/guideql570>.
+- Le **récit de construction** est tenu sur le wiki des Portes Logiques (le dépôt reste la source de vérité technique).
 
 ## Licences
 
