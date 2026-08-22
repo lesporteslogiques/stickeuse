@@ -4,7 +4,7 @@
 
 *Méthode : on écrit l'algorithme en français **avant** de coder ; on construit d'abord le **module cœur** (détection + impression), testable en ligne de commande, **avant** l'interface.*
 
-> Le contexte matériel vérifié vit dans `notes-techniques-QL570.md`. La fabrication de l'image (par l'utilisateur) vit dans `prise-en-main-gimp.md`.
+> Le contexte matériel vérifié vit dans `machine-QL570-notes-techniques.md`. La fabrication de l'image (par l'utilisateur) vit dans `prise-en-main-gimp.md`.
 
 ---
 
@@ -24,12 +24,12 @@ La création de l'image **n'est pas** le travail de l'appli : c'est l'utilisateu
 
 Cet exemplaire de QL-570 est de la **récupération**. Il n'imprime aujourd'hui de façon éprouvée que le **DK-11208** ; le **DK-11202** est au catalogue mais marqué indisponible, en attente de réparation. L'appli est donc **multi-rouleaux dans sa structure** et momentanément limitée dans les faits — la contrainte est matérielle, elle n'est plus inscrite dans le code.
 
-### Rappels matériel porteurs (détail dans `notes-techniques-QL570.md`)
+### Rappels matériel porteurs (détail dans `machine-QL570-notes-techniques.md`)
 
 - L'identité Brother (`idVendor 04f9`, `idProduct 2028`, `product "QL-570"`) se lit sur le **parent USB** du nœud, jamais sur `lpX` lui-même.
 - Les dimensions d'image acceptées sont **strictes**, et **dépendent du rouleau déclaré** : 413 × 991 px pour le DK-11208, 696 × 1109 px pour le DK-11202 — ou leur transposée (paysage, pivotée automatiquement par `brother_ql`). Toute autre taille → refus `Bad image dimensions`.
 - **Rien en dur** : ni le port `lpX`, ni le modèle. Les étiquettes forment un **catalogue de configuration** (`ETIQUETTES` dans `src/coeur.py`) : un rouleau = une ligne, avec ses dimensions, sa référence et, le cas échéant, le motif de son indisponibilité. La personne déclare à l'accueil lequel est chargé — la machine ne sait pas le dire.
-- **Portée** : grâce à la détection, l'appli tourne sur **n'importe quelle QL-570** et **n'importe quel poste Linux de famille Debian** — imprimante branchée requise. Elle n'est pas liée au FabLab ; les postes OP{NN} sont juste son lieu de déploiement.
+- **Portée** : grâce à la détection, l'appli tourne sur **n'importe quelle QL-570** et **n'importe quel poste Linux de famille Debian** — imprimante branchée requise. Elle n'est pas liée au FabLab ; les postes OP[XX] sont juste son lieu de déploiement.
 
 ---
 
@@ -128,7 +128,7 @@ Chaque erreur porte **quatre infos** : *famille · où elle est détectée · ni
 
 ### Journalisation
 
-- **Un fichier de log par poste** : `ql570-<hostname>.log` (chez nous `ql570-OP{NN}.log`), à un endroit fixe et documenté (`~/.ql570/`), ouvrable avec n'importe quel éditeur.
+- **Un fichier de log par poste** : `ql570-<hostname>.log` (chez nous `ql570-OP60.log`), à un endroit fixe et documenté (`~/.ql570/`), ouvrable avec n'importe quel éditeur.
 - **Horodaté**, une ligne par événement. Le nom de la machine est **dans le nom du fichier ET sur chaque ligne** (une ligne extraite reste auto-suffisante).
 - Champs d'une ligne : *horodatage · machine · famille · où détecté · niveau · message système brut*. Le log = le catalogue daté et complété du détail système.
 - **Journal cumulatif**, pas un fichier par erreur (sinon on perd la séquence d'événements qui dépanne).
@@ -215,19 +215,20 @@ Petit programme tournant en fond dans la session, **consommateur du cœur (C1)**
 
 *Liste vivante des angles morts, par ordre d'importance. À refermer au fil des phases.*
 
-- **Documentation wiki (Les Portes Logiques)** *(à boucler)* : page « Utiliser l'application Stickeuse-QL570 » — **raconter l'usage et renvoyer au dépôt** (source de vérité technique), sans dupliquer les instructions d'install. À aligner : le spec d'image affiché côté wiki doit indiquer le `413×991` de l'appli ; ajouter le lien vers `github.com/lesporteslogiques/stickeuse`.
 - **Cohabitation A/B** *(ouvert)* : que fait concrètement la pop-up de B (notifier seulement, ou proposer d'ouvrir A) ? Éviter une pop-up redondante si A est déjà ouverte.
 - **Débranchement à chaud** *(ouvert)* : pendant que A est ouverte (détectée au lancement, partie avant l'impression).
 - **Mineurs** : plusieurs imprimantes Brother branchées (C1 prend la première — simplification assumée) ; examiner `template_paysage.png` (vestige de l'ancienne « Stickeuse ») ; maquettes dédiées des dialogues succès/erreur si besoin ; enrichir les lignes de journal avec les champs structurés (*famille · où · niveau*) du spec, et envisager une rotation des logs.
 
 **Refermés**
 
+- **Documentation wiki (Les Portes Logiques)** → page « Utiliser l'application Stickeuse QL-570 » en ligne depuis le 15 août 2026 : elle raconte l'usage, affiche les dimensions des deux rouleaux et renvoie au dépôt, sans dupliquer les instructions d'installation. La page LogicOS 2026 porte en outre le protocole de nettoyage des OP[XX] et référence l'appli dans son inventaire logiciel.
+
 - **Module cœur (C1 + C2 + C3)** → codé, commenté, testé sur matériel (impression réelle sur OP42 ; détection portable sur OP52). `src/coeur.py`.
 - **Journalisation** → codée (`src/journal.py`), un log par poste dans `~/.ql570/`.
 - **Catalogue d'erreurs** → structure d'accueil + entrées E-C2-* / E-C3-* (dont `E-C3-6`, découverte en codant).
 - **Programme A — interface d'impression** → codé (`src/programme_a.py`) : deux écrans, fenêtre proportionnelle à l'écran, aperçu, impression en fil séparé avec annulation des exemplaires restants, vérification de GIMP à l'accueil.
 - **Programme B — agent de détection** → codé (`src/programme_b.py`) : autostart, notification au branchement, arrêt propre au Ctrl-C.
-- **Installation / déploiement** → `install.sh` / `uninstall.sh` écrits et éprouvés sur postes réels (Debian 12 et 13) : venv sous `/opt/ql570/`, règle udev, groupe `lp`, autostart de B, entrée de menu, mires de test posées dans `/opt/ql570/` et dans le dossier « Images » de l'utilisateur.
+- **Installation / déploiement** → `install.sh` / `uninstall.sh` écrits et éprouvés en conditions réelles (Debian 13) : venv sous `/opt/ql570/`, règle udev, groupe `lp`, autostart de B, entrée de menu, mires de test posées dans `/opt/ql570/` et dans le dossier « Images » de l'utilisateur. **Au FabLab, un seul poste porte la version actuelle : OP60.** Le reste du parc sera nettoyé puis équipé au fil des besoins des adhérent·e·s, à partir de la rentrée 2026.
 - **Localisation de `brother_ql`** → déduite du venv (`sys.prefix`) et non cherchée sur le PATH. Le défaut, resté latent deux déploiements durant (une copie système traînait dans le PATH), a été isolé puis corrigé ; `E-C3-6` n'a plus qu'une seule cause possible.
 - **Mires de test** → quatre fichiers `src/test-stickeuse-<référence>-<orientation>.png`, un par rouleau et par orientation, et leur générateur `test/generer-mire.py`, qui documente les formats en code. Le nom de fichier commence par `test-` et non `mire-` : « mire » est un mot de métier, illisible pour qui ouvre « Parcourir… » sans connaître l'imprimerie. Le mot reste en revanche **sur l'étiquette imprimée**, où le contexte le rend clair. Chaque mire porte sa **référence de rouleau** imprimée (`DK-11208`, `DK-11202`) : sans elle, deux mires posées côte à côte sur la table sont impossibles à distinguer. La **désinstallation ne connaît aucun de ces noms** : elle relève ce que l'installation a posé dans `/opt/ql570/` avant de l'effacer, et retire exactement cela du dossier « Images ». Une liste écrite dans les deux scripts finirait par diverger — on ajoute un rouleau d'un côté, on l'oublie de l'autre, et un fichier orphelin reste chez l'utilisateur. Le même défaut, sous une autre forme, a déjà coûté une installation silencieusement incomplète : un nom de mire écrit hors de la liste, oublié lors d'un renommage.
 
@@ -243,7 +244,7 @@ Le **nom de fichier** porte en plus les dimensions en pixels — `test-stickeuse
 
 ## Statut
 
-- **Module cœur (C1 + C2 + C3)** : **codé et validé sur matériel**. `src/coeur.py`. Impression réelle confirmée sur plusieurs postes ; détection portable confirmée sous Debian 12 et 13.
+- **Module cœur (C1 + C2 + C3)** : **codé et validé sur matériel**. `src/coeur.py`. Impression réelle confirmée sur plusieurs postes ; détection portable confirmée sous Debian 13.
 - **Journalisation** : **codée**. `src/journal.py` — un log par poste dans `~/.ql570/ql570-<hostname>.log`.
 - **Catalogue d'erreurs** : structure + entrées E-C2-* / E-C3-* (dont `E-C3-6`, dont la cause a été ramenée à une seule).
 - **Programme A** : **codé et utilisé** (`src/programme_a.py`) — fenêtre proportionnelle, aperçu, exemplaires multiples, annulation, vérification de GIMP.

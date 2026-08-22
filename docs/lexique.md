@@ -3,6 +3,10 @@
 > Les mots techniques croisés dans le code et la doc, définis **simplement et une
 > seule fois**. À enrichir au fil de l'eau.
 
+**autostart** — le mécanisme qui lance un programme à l'ouverture de session.
+Sous Linux, il suffit d'y déposer un fichier `.desktop` : celui de l'agent vit
+dans `/etc/xdg/autostart/`, donc pour tous les comptes du poste.
+
 **backend** — la « voie » par laquelle le programme parle à l'imprimante : ici
 `linux_kernel` (en passant par un nœud `lpX`) ou `pyusb` (en s'adressant
 directement au bus USB).
@@ -82,6 +86,11 @@ et suivre leurs branchements.
 
 **shell** — la « coquille » du système : l'interpréteur de commandes (bash, zsh…)
 par lequel on tape des ordres, qu'il transmet au noyau.
+
+**sudoers** — le fichier qui liste les comptes autorisés à utiliser `sudo`, donc
+à exécuter des commandes en administrateur. Un compte absent de cette liste
+obtient « n'est pas dans le fichier sudoers » : c'est le cas des postes du
+FabLab, où l'on passe alors par `su -` et le mot de passe root.
 
 **udev** — le sous-système Linux qui décrit les périphériques et réagit à leurs
 branchements et débranchements.

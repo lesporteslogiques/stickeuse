@@ -4,7 +4,7 @@ Application pour piloter l'imprimante d'étiquettes **Brother QL-570** depuis un
 
 Jusqu'ici, imprimer sur cette machine supposait la ligne de commande, un port et un modèle écrits en dur, et une image au pixel près sous peine de refus. La Stickeuse rend le geste cliquable.
 
-> **Statut : opérationnelle.** Module cœur, journalisation, application d'impression et agent de détection sont codés et validés sur matériel. Les scripts `install.sh` / `uninstall.sh` ont été éprouvés lors de déploiements complets, sous Debian 12 et Debian 13.
+> **Statut : opérationnelle.** Module cœur, journalisation, application d'impression et agent de détection sont codés et validés sur matériel. Les scripts `install.sh` / `uninstall.sh` ont été éprouvés en conditions réelles, sous Debian 13. Au FabLab, un premier poste est équipé (OP60) ; le reste du parc suivra au fil des besoins.
 
 Née en décembre 2025, l'application a mis neuf mois à trouver sa version stable, en août 2026. L'essentiel de ce temps n'est pas passé dans le code, mais dans la connaissance de la machine : le piège de nommage qui appelle « 39x90 » une étiquette de 38 mm, les 413 × 991 pixels exigés au pixel près, l'identité Brother qui se lit sur le périphérique USB parent et non sur le nœud d'impression.
 
@@ -58,16 +58,16 @@ Une fois le poste nettoyé, suivre la procédure ci-dessous. Les comptes des
 OP[XX] ne peuvent pas utiliser `sudo` : ce sera la **voie B**, avec le mot de
 passe root.
 
-> **Étape transitoire.** Le parc est nettoyé poste par poste depuis l'été 2026.
-> Quand tous auront été traités — vraisemblablement courant 2027 — cette
-> sous-section disparaîtra.
+> **Étape transitoire.** Les postes seront nettoyés au fil des besoins des
+> adhérent·e·s, à partir de la rentrée 2026. Quand tous auront été traités,
+> cette sous-section disparaîtra.
 
 ### Sur toute autre machine Debian 13 Trixie
 
 > À faire **une fois par machine**. Il faut pouvoir administrer la machine :
 > soit votre compte est autorisé à utiliser `sudo`, soit vous connaissez le
-> mot de passe de **root** (le compte administrateur de Linux). Debian 12 ou
-> 13, connexion internet requise. L'imprimante n'a pas besoin d'être branchée.
+> mot de passe de **root** (le compte administrateur de Linux). Debian 13,
+> connexion internet requise. L'imprimante n'a pas besoin d'être branchée.
 
 > **Comment lire cette procédure**
 > Les blocs sur fond gris sont des commandes à taper — ou à copier-coller
@@ -261,7 +261,7 @@ Vérifiez ensuite, dans cet ordre :
 - les mires de test dans `/opt/ql570/` et dans le dossier « Images ».
 
 Le détail des paquets installés, et les raisons de ces choix, sont dans
-[`docs/notes-techniques-QL570.md`](docs/notes-techniques-QL570.md).
+[`docs/dependances.md`](docs/dependances.md).
 
 ## En cas de problème pendant l'installation
 
@@ -345,7 +345,8 @@ Trois piliers, détaillés dans [`docs/algorithme-appli-QL570.md`](docs/algorith
 
 ## Documentation du projet
 
-- [`docs/notes-techniques-QL570.md`](docs/notes-techniques-QL570.md) — le contexte matériel vérifié et les dépendances.
+- [`docs/machine-QL570-notes-techniques.md`](docs/machine-QL570-notes-techniques.md) — ce que la machine impose : identité USB, formats d'image, limites.
+- [`docs/dependances.md`](docs/dependances.md) — ce que l'application installe, et pourquoi.
 - [`docs/algorithme-appli-QL570.md`](docs/algorithme-appli-QL570.md) — l'organisation et les algorithmes.
 - [`docs/prise-en-main-gimp.md`](docs/prise-en-main-gimp.md) — comment fabriquer l'image de l'étiquette.
 - **Guide d'usage** (côté utilisateur), sur le wiki : <https://lesporteslogiques.net/wiki/materiel/logicos/guideql570>.
